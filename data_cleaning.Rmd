@@ -1,0 +1,197 @@
+---
+title: "Initial sticky card data cleaning"
+author: "Caroline + Ariella"
+date: "10/4/2022"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# Setup
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = F)
+```
+
+# Load packages
+```{r}
+library(tidyverse)
+```
+
+# Analysis plan
+
+## what questions do we want to answer?
+For each of these things...
+
+timing
+diversity
+number (abundance)
+biomass
+dispersion onto land
+
+we can ask:
+what is X?
+how does X differ with fish presence?
+how does X differ with water temperature?
+
+## what do we need before we can answer them?
+- insect counts + ids for each trap
+- trap information (date, distance from shore, direction, lake, etc)
+- lake information (water temp, fish status, etc)
+
+### Insect counts and IDs
+- load raw insect data
+- make sure columns are in the right format
+- check notes/other columns
+
+
+
+# Load and inspect data
+
+```{r}
+
+lab_stickycards = readxl::read_excel("data/raw_data/stickycard_counted_inlab.xlsx")
+
+str(lab_stickycards)
+dim(lab_stickycards)
+
+# add columns to split info up
+lab_data = lab_stickycards %>% 
+  mutate(cole_weevil = NA,
+         cole_flower = NA,
+         .after = Coleoptera) %>% 
+  mutate(sim_sm = NA,
+         sim_md = NA, 
+         sim_lg = NA,
+         .after = Simuulidae) %>% 
+  mutate(terrestrial = NA) %>% 
+  mutate(index = row_number(), .before = Datasheet) #add a row index for each observation
+
+#write new file
+#write_csv(lab_data, "data/cleaned_data/drafts/lab_stickycards.csv")
+
+```
+
+# Clean data
+Next step: open lab_stickycards.csv in Excel
+  - save as a new version w your initials and date
+  - for each row, check notes + other columns and move all info from there to appropriate other columns
+  - see the following rules for how to sort the information - add any more rules that you use below
+  - fill in the row numbers that you're done with here
+ 
+ROWS EDITED:
+
+## Ariella: 1-198. Need to check cards: (finished)
+
+
+Get information about cards that need checking
+```{r}
+library(tidyverse)
+
+# Make a list of card indexes
+
+cards <- c(27, 30, 31, 32, 35, 36, 41, 42, 44, 45, 85)
+df <- read_csv("data/cleaned_data/drafts/lab_stickycards_AK.csv")
+
+
+# Use list to filter the data frame
+
+card_info <- df %>% 
+  filter(index%in%cards)
+
+# Use information to find cards and check them
+
+View(card_info)
+
+```
+
+## Caroline: 199 -end. 
+need to check cards for:
+
+```{r}
+test = read_csv("data/cleaned_data/drafts/lab_stickycards_CO.csv") %>% 
+  filter(index > 198) %>% 
+  select(-c(2:11)) %>% 
+  filter(is.na(cole_weevil) | is.na(sim_sm) | is.na(terrestrial) | is.na(`Dip-other`))
+  
+check_cards = read_csv("data/cleaned_data/drafts/lab_stickycards_CO.csv") %>%
+  filter(index %in% test$index)
+```
+
+## Combine
+
+1. Combine rows 1-198 (Ariella) and 199-end(Caroline) into new file
+lab_stickycards_AKCO.csv
+2. Rearrange columns to match
+3. Use this new data sheet to finish checking cards
+
+```{r}
+test = read_csv("data/cleaned_data/lab_stickycards_AKCO.csv") %>% 
+  select(-c(2:11)) %>% 
+  filter(is.na(cole_weevil) | is.na(sim_sm) | is.na(terrestrial) | is.na(`Dip-other`))
+  
+check_cards = read_csv("data/cleaned_data/lab_stickycards_AKCO.csv") %>%
+  filter(index %in% test$index) %>% 
+  select(1:7) %>% 
+  mutate(Direction = factor(Direction, levels = c("N", "S", "E", "W"))) %>% 
+  arrange(`Collection date`, Lake, Direction, Distance)
+
+View(check_cards)
+```
+
+
+# Guidelines for cleaning
+
+-ignore any exuviae (molts) - this is not a separate insect
+
+For things with no aquatic stage:
+- hemiptera, leafhoppers, spiders, neuroptera, other predators: "terrestrial" column (remove/ignore)
+- moths/butterflies: add to lepidoptera column
+- hymenoptera (wasps/bees): add to hym column
+
+For coleoptera (beetles):
+-keep total column
+-make columns broken down by group (flower beetles or weevils)
+
+For simuulidae:
+-keep total column
+-make columns broken down by size (small, med, lg)
+
+## Check columns
+- Coleoptera column should be sum of cole_weevil and cole_flower
+- Simuulidae column should be sum of sim_sm, sim_md, and sim_lg
+- Other column should be sum of terrestrial and Dip-other
+
+```{r}
+
+# Load packages
+library(tidyverse)
+
+# Read in data
+check_columns = read_csv("data/cleaned_data/lab_stickycards_AKCO.csv")
+
+# Make new object
+df = check_columns %>% 
+  mutate(cole_good = (cole_weevil + cole_flower == Coleoptera))
+
+# Check for false values in cole_good
+which(df$cole_good == FALSE)
+
+# Make new object
+df2 = check_columns %>% 
+  mutate(sim_good = (sim_sm + sim_md + sim_lg == Simuulidae))
+
+# Check for false values in sim_good
+which(df2$sim_good == FALSE)
+
+# Make new object
+df3 = check_columns %>% 
+  mutate(other_good = (`Dip-other` + terrestrial == Other))
+
+# Check for false values in other_good
+which(df3$other_good == FALSE)
+df3 = df3 %>% filter(other_good == FALSE)
+```
+# Results: 
+## Coleoptera: #39 "cole_flower" should say 3 instead of 2 -- fixed
+## Simuulidae: All correct
+## Other: All fixed

@@ -1,0 +1,186 @@
+---
+title: "Data Exploration for Stable Isotopes"
+author: "Caroline + Ariella"
+date: '2023-1-25'
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Want to learn:
+- For plants, percent C and N, d13C, and d15N by:
+  - Lake
+  - Distance
+  - Elevation?
+  - Fish presence
+- For soils:
+  - Percent C and N, d13C and d15N by:
+    - Fish
+    - Elevation
+    - Lake
+    - % OM
+  - Percent N by percent OM
+
+```{r}
+# Load packages
+library(tidyverse)
+library(janitor)
+library(lubridate)
+library(car)
+
+# Read in data
+plant_iso_data <- read_csv("plant_iso_data.csv") %>% 
+  janitor::clean_names()
+
+```
+
+
+Graphs of percent C and percent N in plants based on distance and fish
+```{r}
+
+# Make scatterplot of percent C as a function of distance and fish
+plant_iso_data %>% 
+  ggplot(aes(x = distance, y = pct_c, color = fish)) +
+  geom_jitter() +
+  ylim(48, 54) +
+  geom_smooth(method="lm")  # fish presence decreases percent C, percent C decreases slightly over distance
+
+# Test significance
+res.lm <- lm(pct_c ~ distance + fish, data = plant_iso_data)
+summary(res.lm) # fish presence significantly decreases percent C in plants
+
+# Make scatterplot of percent N as a function of distance and fish  
+plant_iso_data %>% 
+  ggplot(aes(x = distance, y = pct_n, color = fish)) +
+  geom_jitter() +
+  geom_smooth(method="lm") # fish presence increases percent N, percent N increases with distance
+
+# Test significance
+res.lm2 <- lm(pct_n ~ distance * fish, data = plant_iso_data)
+summary(res.lm2) # fish presence and distance (but not interaction) significantly increase percent N, distance more than fish presence
+
+# percent N likely affected more by distance bc N is more mobile in soil
+
+## Why does fish presence decrease percent C but increase percent N in plants?
+# Fish produce ammonia through protein metabolism which is released through the gills -> increased N in water; more N in plants means less C
+
+```
+
+Graphs of d13C and d15N by distance for plants
+```{r}
+# Make scatterplot of d13C as a function of distance and fish
+plant_iso_data %>% 
+  ggplot(aes(x = distance, y = d13c, color = fish)) +
+  geom_jitter() +
+  geom_smooth(method="lm")
+
+# Test significance
+res.lm3 <- lm(d13c ~ distance, data = plant_iso_data)
+summary(res.lm3)
+qqPlot(res.lm3$residuals) # residuals very close to normal distribution
+
+# Make scatterplot of d15N as a function of distance and fish
+plant_iso_data %>% 
+  ggplot(aes(x = distance, y = d15n, color = fish)) +
+  geom_jitter() +
+  geom_smooth(method="lm")
+
+# Test significance
+res.lm4 <- lm(d15n ~ distance + fish, data = plant_iso_data)
+summary(res.lm4)
+
+```
+
+Graphs of percent N, d13C and d15N by elevation for plants
+```{r}
+
+# Add in lake site data
+plant_iso_data2 <- left_join(plant_iso_data, owens_lake_sites, by = c("lake" = "lake_ID"))
+View(plant_iso_data2)
+
+# Make scatterplot of percent N by elevation and fish
+plant_iso_data2 %>% 
+  ggplot(aes(x = elevation_m, y = pct_n, color = fish)) +
+  geom_jitter() +
+  geom_smooth(method="lm")
+
+# Test significance
+res.lm5 <- lm(pct_n ~ elevation_m + fish, data = plant_iso_data2)
+summary(res.lm5)
+
+# Make scatterplot of d13C by elevation and fish
+plant_iso_data2 %>% 
+  ggplot(aes(x = elevation_m, y = d13c, color = fish)) +
+  geom_jitter() +
+  geom_smooth(method="lm")
+
+# Test significance
+res.lm6 <- lm(d13c ~ elevation_m + fish, data = plant_iso_data2)
+summary(res.lm6)
+
+# Make scatterplot of d15N by elevation and fish
+plant_iso_data2 %>% 
+  ggplot(aes(x = elevation_m, y = d15n, color = fish)) +
+  geom_jitter() +
+  geom_smooth(method="lm")
+
+# Test significance
+res.lm7 <- lm(d15n ~ elevation_m * fish, data = plant_iso_data2)
+summary(res.lm7)
+qqPlot(res.lm7$residuals) # residuals very close to normal distribution
+
+```
+
+Graphs of percent C and percent N in soils based on elevation and fish
+```{r}
+
+# Import soils data
+complete_iso_data <- read_excel("OwensC 220627 CN A003185.xlsx", sheet = "Samples") %>%
+  janitor::clean_names()
+View(complete_iso_data)
+
+soil_iso_data <- subset(complete_iso_data, type_of_material=='surface soil') %>%
+  mutate(sample_id=as.numeric(str_replace(sample_id, "SS", ""))) # %>%
+  # filter(!is.na(sample_id))
+View(soil_iso_data)
+
+soil_metadata = readxl::read_xlsx("C:/Users/Ariella Katzman/Downloads/soil_edited_2021.xlsx", 
+    sheet=2) %>%
+  janitor::clean_names() %>%
+  select(sample_ID = sample_description_number_1,
+         pct_OM = organic_matter_percent,
+         lake, distance_m, veg1_amt:notes) %>%
+  mutate(sample_ID = as.numeric(sample_ID))
+
+
+View(soil_metadata)
+
+# Add in lake site data
+soil_iso_data2 <- left_join(soil_iso_data, owens_lake_sites, by = c("lake" = "lake_ID"))
+View(plant_iso_data2)
+
+# Make scatterplot of percent C as a function of elevation and fish
+soil_iso_data %>% 
+  ggplot(aes(x = elevation, y = pct_c, color = fish)) +
+  geom_jitter() +
+  geom_smooth(method="lm")
+
+# Test significance
+res.lm <- lm(pct_c ~ distance + fish, data = plant_iso_data)
+summary(res.lm) # fish presence significantly decreases percent C in plants
+
+# Make scatterplot of percent N as a function of distance and fish  
+plant_iso_data %>% 
+  ggplot(aes(x = distance, y = pct_n, color = fish)) +
+  geom_jitter() +
+  geom_smooth(method="lm") # fish presence increases percent N, percent N increases with distance
+
+# Test significance
+res.lm2 <- lm(pct_n ~ distance * fish, data = plant_iso_data)
+summary(res.lm2) # fish presence and distance (but not interaction) significantly increase percent N, distance more than fish presence
+```
+
