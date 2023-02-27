@@ -39,6 +39,7 @@ plant_iso_data <- read_csv("plant_iso_data.csv") %>%
 ```
 
 
+PLANTS
 Graphs of percent C and percent N in plants based on distance and fish
 ```{r}
 
@@ -135,9 +136,9 @@ qqPlot(res.lm7$residuals) # residuals very close to normal distribution
 
 ```
 
-Graphs of percent C and percent N in soils based on elevation and fish
-```{r}
 
+SOILS
+```{r}
 # Import soils data
 complete_iso_data <- read_excel("OwensC 220627 CN A003185.xlsx", sheet = "Samples") %>%
   janitor::clean_names()
@@ -157,30 +158,86 @@ soil_metadata = readxl::read_xlsx("C:/Users/Ariella Katzman/Downloads/soil_edite
   mutate(sample_ID = as.numeric(sample_ID))
 
 
-View(soil_metadata)
+# Add soil metadata to isotope data
+soil_iso_data2 <- left_join(soil_iso_data, soil_metadata, by = c("sample_id" = "sample_ID"))
+View(soil_iso_data2)
 
-# Add in lake site data
-soil_iso_data2 <- left_join(soil_iso_data, owens_lake_sites, by = c("lake" = "lake_ID"))
-View(plant_iso_data2)
+# Add lake site data to isotope data
+soil_iso_data3 <- left_join(soil_iso_data2, owens_lake_sites, by = c("lake" = "lake_ID"))
+View(soil_iso_data3)
 
+```
+
+Calculate percent C and percent N
+```{r}
+# Calculate percent N
+soil_iso_data4 <- soil_iso_data4 %>%
+  mutate(pct_n = total_n_ug / (as.numeric(sample_weight_mg)*1000) * 100)
+View(soil_iso_data4)
+
+# Calculate percent C
+soil_iso_data4 <- soil_iso_data4 %>%
+  mutate(pct_c = total_c_ug / (as.numeric(sample_weight_mg)*1000) * 100)
+View(soil_iso_data4)
+
+```
+
+Graphs of percent C and percent N in soils based on elevation and fish
+```{r}
 # Make scatterplot of percent C as a function of elevation and fish
-soil_iso_data %>% 
-  ggplot(aes(x = elevation, y = pct_c, color = fish)) +
+soil_iso_data4 %>% 
+  ggplot(aes(x = elevation_m, y = pct_c, color = fish_status)) +
   geom_jitter() +
   geom_smooth(method="lm")
 
 # Test significance
-res.lm <- lm(pct_c ~ distance + fish, data = plant_iso_data)
-summary(res.lm) # fish presence significantly decreases percent C in plants
+res.lm <- lm(pct_c ~ elevation_m + fish_status, data = soil_iso_data4)
+summary(res.lm) # not significant
 
-# Make scatterplot of percent N as a function of distance and fish  
-plant_iso_data %>% 
-  ggplot(aes(x = distance, y = pct_n, color = fish)) +
+# Make scatterplot of percent N as a function of elevation and fish  
+soil_iso_data4 %>% 
+  ggplot(aes(x = elevation_m, y = pct_n, color = fish_status)) +
   geom_jitter() +
-  geom_smooth(method="lm") # fish presence increases percent N, percent N increases with distance
+  geom_smooth(method="lm") # fish presence increases percent N, percent N increases with elevation
 
 # Test significance
-res.lm2 <- lm(pct_n ~ distance * fish, data = plant_iso_data)
-summary(res.lm2) # fish presence and distance (but not interaction) significantly increase percent N, distance more than fish presence
+res.lm2 <- lm(pct_n ~ elevation_m + fish_status, data = soil_iso_data4)
+summary(res.lm2) # fish presence and elevation (but not interaction) significantly increase percent N
+```
+
+Graphs of d13C and d15N by elevation for soils
+```{r}
+# Make scatterplot of d13C as a function of elevation and fish
+soil_iso_data4 %>% 
+  ggplot(aes(x = elevation_m, y = d13c, color = fish_status)) +
+  geom_jitter() +
+  geom_smooth(method="lm")
+
+# Test significance
+res.lm3 <- lm(d13c ~ elevation_m * fish_status, data = soil_iso_data4) # elevation and fish status both (and interaction) significantly increase d13c, elevation more than fish status
+summary(res.lm3)
+
+# Make scatterplot of d15N as a function of distance and fish
+soil_iso_data4 %>% 
+  ggplot(aes(x = elevation_m, y = d15n, color = fish_status)) +
+  geom_jitter() +
+  geom_smooth(method="lm") # fish and elevation both seem to increase d15n
+
+# Test significance
+res.lm4 <- lm(d15n ~ elevation_m + fish_status, data = soil_iso_data4)
+summary(res.lm4) # fish and elevation (but not interaction) significantly increase d15n in soils
+
+```
+
+Graphs of percent N by percent OM
+```{r}
+# Make scatterplot of percent N as a function of percent OM
+soil_iso_data4 %>% 
+  ggplot(aes(x = pct_OM, y = pct_n, color = fish_status)) +
+  geom_jitter() +
+  geom_smooth(method="lm")
+
+res.lm5 <- lm(pct_n ~ pct_OM, data = soil_iso_data4) # pct_OM significantly increases pct_n in soils
+summary(res.lm5)
 ```
 
