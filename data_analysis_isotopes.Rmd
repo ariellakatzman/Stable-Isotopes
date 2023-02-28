@@ -1,0 +1,20 @@
+---
+title: "Data Analysis for Stable Isotopes"
+author: "Ariella Katzman"
+date: '2023-02-27'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load packages
+library(tidyverse)
+library(janitor)
+library(lubridate)
+library(car)
+
+# Read in data
+
+```
+
