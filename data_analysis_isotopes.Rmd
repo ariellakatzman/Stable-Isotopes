@@ -19,6 +19,7 @@ library(car)
 
 Given that there are 243 kg soil per square meter, how much N (g) is there per square meter?
 ```{r}
+
 # Calculate N per square meter soil
 soil_iso_data4 <- soil_iso_data4 %>%
   mutate(n_g_m2 = pct_n/100 * 243 * 1000)
