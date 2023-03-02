@@ -23,7 +23,69 @@ Given that there are 243 kg soil per square meter, how much N (g) is there per s
 # Calculate N per square meter soil
 soil_iso_data4 <- soil_iso_data4 %>%
   mutate(n_g_m2 = pct_n/100 * 243 * 1000)
+# % to ratio, kg N/kg soil * kg soil/m2 * g/kg
 View(soil_iso_data4)
 
 ```
 
+Interactions between N as a function of OM, elevation, fish status
+```{r}
+# Try out all possible combos of variables
+res.lm6 <- lm(sqrt(pct_n) ~ pct_OM * elevation_m * fish_status, data = soil_iso_data4)
+summary(res.lm6)
+qqPlot(res.lm6)
+ggpredict(res.lm6, terms = c("fish_status", "elevation_m"))
+
+res.lm7 <- lm(sqrt(pct_n) ~ pct_OM * (elevation_m + fish_status), data = soil_iso_data4) 
+summary(res.lm7)
+qqPlot(res.lm7)
+
+res.lm8 <- lm(sqrt(pct_n) ~ pct_OM + elevation_m + fish_status, data = soil_iso_data4) 
+summary(res.lm8)
+qqPlot(res.lm8)
+
+res.lm9 <- lm(sqrt(pct_n) ~ pct_OM * elevation_m, data = soil_iso_data4) 
+summary(res.lm9)
+qqPlot(res.lm9)
+
+res.lm10 <- lm(sqrt(pct_n) ~ pct_OM + elevation_m, data = soil_iso_data4) 
+summary(res.lm10)
+qqPlot(res.lm10)
+
+# Test which model is the best fit
+AIC(res.lm6, res.lm7, res.lm8, res.lm9, res.lm10)
+# Model of percent OM, elevation, and fish status with interactions is best fit for the data 
+```
+
+Interactions between N as a function of OM, lake pair, fish status
+```{r}
+# Try out all possible combos of variables
+res.lm11 <- lm(sqrt(pct_n) ~ pct_OM * lake_pair * fish_status, data = soil_iso_data4)
+summary(res.lm11)
+qqPlot(res.lm11)
+ggpredict(res.lm11, terms = c("fish_status", "lake_pair"))
+
+res.lm12 <- lm(sqrt(pct_n) ~ pct_OM * (lake_pair + fish_status), data = soil_iso_data4) 
+summary(res.lm12)
+qqPlot(res.lm12)
+
+res.lm13 <- lm(sqrt(pct_n) ~ pct_OM + lake_pair + fish_status, data = soil_iso_data4) 
+summary(res.lm13)
+qqPlot(res.lm13)
+
+res.lm14 <- lm(sqrt(pct_n) ~ pct_OM * lake_pair, data = soil_iso_data4) 
+summary(res.lm14)
+qqPlot(res.lm14)
+
+res.lm15 <- lm(sqrt(pct_n) ~ pct_OM + lake_pair, data = soil_iso_data4) 
+summary(res.lm15)
+qqPlot(res.lm15)
+
+# Test which model is the best fit
+AIC(res.lm6, res.lm11, res.lm12, res.lm13, res.lm14, res.lm15)
+# Model of percent OM, lake pair, and fish status with interactions is best fit for the data 
+# Lake pair better than elevation
+```
+
+ggpredict function gives us an estimate for the amount of nitrogen in soil at each lake
+next step: calculate extra nitrogen in terms of fish per square meter
