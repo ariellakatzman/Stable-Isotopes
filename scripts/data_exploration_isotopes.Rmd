@@ -31,6 +31,8 @@ library(tidyverse)
 library(janitor)
 library(lubridate)
 library(car)
+library(ggeffects)
+library(splines)
 
 # Read in data
 plant_iso_data <- read_csv("plant_iso_data.csv") %>% 
@@ -166,6 +168,18 @@ View(soil_iso_data2)
 soil_iso_data3 <- left_join(soil_iso_data2, owens_lake_sites, by = c("lake" = "lake_ID"))
 View(soil_iso_data3)
 
+# Edit column names
+colnames(soil_iso_data3)[3] = "total_c_ug"
+colnames(soil_iso_data3)[6] = "total_n_ug"
+colnames(soil_iso_data3)[2] = "d13c"
+colnames(soil_iso_data3)[5] = "d15n"
+colnames(soil_iso_data3)[12] = "sample_weight_mg"
+soil_iso_data4 <- soil_iso_data3 %>% 
+  subset(!is.na(lake))
+soil_iso_data4 <- soil_iso_data4 %>% 
+  subset(!is.na(pct_OM)) + 
+  substr
+
 ```
 
 Calculate percent C and percent N
@@ -241,3 +255,30 @@ res.lm5 <- lm(pct_n ~ pct_OM, data = soil_iso_data4) # pct_OM significantly incr
 summary(res.lm5)
 ```
 
+Interactions between N as a function of OM, elevation, fish status
+```{r}
+
+res.lm6 <- lm(sqrt(pct_n) ~ pct_OM * elevation_m * fish_status, data = soil_iso_data4)
+summary(res.lm6)
+qqPlot(res.lm6)
+ggpredict(res.lm6, terms = c("fish_status", "elevation_m"))
+
+res.lm7 <- lm(sqrt(pct_n) ~ pct_OM * (elevation_m + fish_status), data = soil_iso_data4) 
+summary(res.lm7)
+qqPlot(res.lm7)
+
+res.lm8 <- lm(sqrt(pct_n) ~ pct_OM + elevation_m + fish_status, data = soil_iso_data4) 
+summary(res.lm8)
+qqPlot(res.lm8)
+
+res.lm9 <- lm(sqrt(pct_n) ~ pct_OM * elevation_m, data = soil_iso_data4) 
+summary(res.lm9)
+qqPlot(res.lm9)
+
+res.lm10 <- lm(sqrt(pct_n) ~ pct_OM + elevation_m, data = soil_iso_data4) 
+summary(res.lm10)
+qqPlot(res.lm10)
+
+AIC(res.lm6, res.lm7, res.lm8, res.lm9, res.lm10)
+
+```
