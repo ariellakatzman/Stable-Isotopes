@@ -174,12 +174,17 @@ colnames(soil_iso_data3)[6] = "total_n_ug"
 colnames(soil_iso_data3)[2] = "d13c"
 colnames(soil_iso_data3)[5] = "d15n"
 colnames(soil_iso_data3)[12] = "sample_weight_mg"
+# Remove NAs
 soil_iso_data4 <- soil_iso_data3 %>% 
   subset(!is.na(lake))
 soil_iso_data4 <- soil_iso_data4 %>% 
-  subset(!is.na(pct_OM)) + 
-  substr
-
+  subset(!is.na(pct_OM)) 
+# Substring to get lake pairs
+soil_iso_data4 <- soil_iso_data4 %>%
+  mutate(lake_pair = substring(lake, 1, 2))
+# Substring to get basin
+soil_iso_data4 <- soil_iso_data4 %>%
+  mutate(basin = substring(lake, 1, 1))
 ```
 
 Calculate percent C and percent N
@@ -255,30 +260,12 @@ res.lm5 <- lm(pct_n ~ pct_OM, data = soil_iso_data4) # pct_OM significantly incr
 summary(res.lm5)
 ```
 
-Interactions between N as a function of OM, elevation, fish status
 ```{r}
-
-res.lm6 <- lm(sqrt(pct_n) ~ pct_OM * elevation_m * fish_status, data = soil_iso_data4)
-summary(res.lm6)
-qqPlot(res.lm6)
-ggpredict(res.lm6, terms = c("fish_status", "elevation_m"))
-
-res.lm7 <- lm(sqrt(pct_n) ~ pct_OM * (elevation_m + fish_status), data = soil_iso_data4) 
-summary(res.lm7)
-qqPlot(res.lm7)
-
-res.lm8 <- lm(sqrt(pct_n) ~ pct_OM + elevation_m + fish_status, data = soil_iso_data4) 
-summary(res.lm8)
-qqPlot(res.lm8)
-
-res.lm9 <- lm(sqrt(pct_n) ~ pct_OM * elevation_m, data = soil_iso_data4) 
-summary(res.lm9)
-qqPlot(res.lm9)
-
-res.lm10 <- lm(sqrt(pct_n) ~ pct_OM + elevation_m, data = soil_iso_data4) 
-summary(res.lm10)
-qqPlot(res.lm10)
-
-AIC(res.lm6, res.lm7, res.lm8, res.lm9, res.lm10)
+soil_iso_data4 %>% 
+  ggplot(aes(x = lake_pair, y = n_g_m2, color = fish_status)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.2, alpha = 0.2) +
+  geom_smooth(method="lm")
 
 ```
+

@@ -13,9 +13,9 @@ library(tidyverse)
 library(janitor)
 library(lubridate)
 library(car)
+library(ggeffects)
 
 ```
-
 
 Given that there are 243 kg soil per square meter, how much N (g) is there per square meter?
 ```{r}
@@ -28,27 +28,28 @@ View(soil_iso_data4)
 
 ```
 
+
 Interactions between N as a function of OM, elevation, fish status
 ```{r}
 # Try out all possible combos of variables
-res.lm6 <- lm(sqrt(pct_n) ~ pct_OM * elevation_m * fish_status, data = soil_iso_data4)
+res.lm6 <- lm(n_g_m2 ~ pct_OM * elevation_m * fish_status, data = soil_iso_data4)
 summary(res.lm6)
 qqPlot(res.lm6)
 ggpredict(res.lm6, terms = c("fish_status", "elevation_m"))
 
-res.lm7 <- lm(sqrt(pct_n) ~ pct_OM * (elevation_m + fish_status), data = soil_iso_data4) 
+res.lm7 <- lm(n_g_m2 ~ pct_OM * (elevation_m + fish_status), data = soil_iso_data4) 
 summary(res.lm7)
 qqPlot(res.lm7)
 
-res.lm8 <- lm(sqrt(pct_n) ~ pct_OM + elevation_m + fish_status, data = soil_iso_data4) 
+res.lm8 <- lm(n_g_m2 ~ pct_OM + elevation_m + fish_status, data = soil_iso_data4) 
 summary(res.lm8)
 qqPlot(res.lm8)
 
-res.lm9 <- lm(sqrt(pct_n) ~ pct_OM * elevation_m, data = soil_iso_data4) 
+res.lm9 <- lm(n_g_m2 ~ pct_OM * elevation_m, data = soil_iso_data4) 
 summary(res.lm9)
 qqPlot(res.lm9)
 
-res.lm10 <- lm(sqrt(pct_n) ~ pct_OM + elevation_m, data = soil_iso_data4) 
+res.lm10 <- lm(n_g_m2 ~ pct_OM + elevation_m, data = soil_iso_data4) 
 summary(res.lm10)
 qqPlot(res.lm10)
 
@@ -60,24 +61,23 @@ AIC(res.lm6, res.lm7, res.lm8, res.lm9, res.lm10)
 Interactions between N as a function of OM, lake pair, fish status
 ```{r}
 # Try out all possible combos of variables
-res.lm11 <- lm(sqrt(pct_n) ~ pct_OM * lake_pair * fish_status, data = soil_iso_data4)
+res.lm11 <- lm(n_g_m2 ~ pct_OM * lake_pair * fish_status, data = soil_iso_data4)
 summary(res.lm11)
 qqPlot(res.lm11)
-ggpredict(res.lm11, terms = c("fish_status", "lake_pair"))
 
-res.lm12 <- lm(sqrt(pct_n) ~ pct_OM * (lake_pair + fish_status), data = soil_iso_data4) 
+res.lm12 <- lm(n_g_m2 ~ pct_OM * (lake_pair + fish_status), data = soil_iso_data4) 
 summary(res.lm12)
 qqPlot(res.lm12)
 
-res.lm13 <- lm(sqrt(pct_n) ~ pct_OM + lake_pair + fish_status, data = soil_iso_data4) 
+res.lm13 <- lm(n_g_m2 ~ pct_OM + lake_pair + fish_status, data = soil_iso_data4) 
 summary(res.lm13)
 qqPlot(res.lm13)
 
-res.lm14 <- lm(sqrt(pct_n) ~ pct_OM * lake_pair, data = soil_iso_data4) 
+res.lm14 <- lm(n_g_m2 ~ pct_OM * lake_pair, data = soil_iso_data4) 
 summary(res.lm14)
 qqPlot(res.lm14)
 
-res.lm15 <- lm(sqrt(pct_n) ~ pct_OM + lake_pair, data = soil_iso_data4) 
+res.lm15 <- lm(n_g_m2 ~ pct_OM + lake_pair, data = soil_iso_data4) 
 summary(res.lm15)
 qqPlot(res.lm15)
 
@@ -85,7 +85,63 @@ qqPlot(res.lm15)
 AIC(res.lm6, res.lm11, res.lm12, res.lm13, res.lm14, res.lm15)
 # Model of percent OM, lake pair, and fish status with interactions is best fit for the data 
 # Lake pair better than elevation
+
+# Use ggpredict to estimate amount of N in soil at each lake
+ggpredict(res.lm11, terms = c("fish_status", "lake_pair"))
+
 ```
 
 ggpredict function gives us an estimate for the amount of nitrogen in soil at each lake
 next step: calculate extra nitrogen in terms of fish per square meter
+Brook g N/fish = 1.853296 g N/fish
+Rainbow g N/fish = 2.228152 g N/fish
+Humphreys(H1P): brook
+LowerDes(H2P): rainbow
+Mesa(H3P): rainbow
+
+How many fish would it take to equal the amount of additional N per sq. meter of soil?
+```{r}
+
+soil_iso_data4 %>%
+  group_by(lake_pair, fish_status) %>% 
+    summarise(n_g_m2_mean = mean(n_g_m2, na.rm = TRUE),
+            n_g_m2_sd = sd(n_g_m2, na.rm = TRUE))
+
+soil_iso_data4 %>%
+  group_by(lake_pair, fish_status) %>% 
+    summarise(n_g_m2_mean = mean(n_g_m2, na.rm = TRUE)) %>% 
+         pivot_wider(names_from = fish_status, values_from = n_g_m2_mean) %>%
+  mutate(diff = present - absent, 
+         fish_type = case_when(lake_pair == "H1" ~ "brook", T ~ "rainbow"), 
+         N_g_fish = case_when(fish_type == "brook" ~ 1.853296, T ~ 2.228152),
+         fish_per_m2 = diff/N_g_fish) 
+
+
+# Calculate fish/m2 needed in lakes with fish for that difference in soil N
+# H1: g N/m2 soil / g N/fish = 794.7171 fish per sq. meter
+1472.846 / 1.853296
+# H2: g N/m2 soil / g N/fish = -3.138443 fish per sq. meter
+-364.0286 / 
+# H3: g N/m2 soil / g N/fish = -3.111286 fish per sq. meter
+-382.8322 /  
+# K1: g N/m2 soil / g N/fish = 
+
+# K2: g N/m2 soil / g N/fish = 
+
+# Find differences in soil N between lakes with/without fish using predicted values
+# H1: present - absent = 1472.846 g N/m2
+2672.5186 - 1199.6725
+# H2: present - absent = -364.0286 g N/m2 ***absent greater than present
+1822.5328	- 2186.5614
+# H3: present - absent = 184.69 g N/m2
+  # 184.69 g N/m2 / 123.0463 g N/fish = 1.50098 fish per sq. meter
+
+```
+
+
+
+Next steps:
+- Calculating number of fish needed to equal soil N for each lake
+- Calculate number of insects needed to equal soil N for each lake
+- Writing results in abstract form
+- Making figure
